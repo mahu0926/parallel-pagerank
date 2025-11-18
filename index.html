@@ -17,9 +17,6 @@
             background-color: #003366;
             color: white;
         }
-        h1, h2, h3 {
-            color: #003366;
-        }
         section {
             background-color: white;
             padding: 15px 20px;
@@ -63,68 +60,65 @@
 
     <section id="summary">
         <h2>Summary</h2>
-        <p>We plan to implement and optimize a parallelized version of the PageRank algorithm using three complementary parallel programming models: OpenMP, MPI, and CUDA, to measure the importance of different nodes in a network. Our goal is to design and benchmark our parallel implementation and compare it against the sequential implementation and potentially other parallel implementations if time persists.</p>
+        <p>We plan to implement and optimize a parallelized version of the PageRank algorithm using three complementary parallel programming models: OpenMP, MPI, and CUDA, to measure the importance of different nodes in a network. Our goal is to design and benchmark our parallel implementation and compare it against the sequential implementation and potentially other parallel implementations if time persists. </p>
     </section>
 
     <section id="background">
         <h2>Background</h2>
-        <p>PageRank, developed by Google founders, is a web search ranking algorithm based on numerical importance metrics. It treats the web as a graph where webpages are nodes and hyperlinks are edges. A webpage receives a high importance score if many pages link to it or if it is linked by highly ranked pages, factoring in both quantity and quality of links.</p>
-        <p>Pseudocode for the algorithm:</p>
-        <pre>
-While not converged:
-    For each node in graph:
-        Compute new rank from in-neighbors
-    Update ranks
-        </pre>
-        <p>While primarily used for webpage ranking, PageRank can also be applied to recommendation systems, citation analysis, and ranking papers or other networks.</p>
-        <p>The algorithm is well-suited for parallelism: each node's update can be computed independently per iteration, and the sparse matrix-vector multiplication and iterative power method are highly parallelizable.</p>
+        <p>We are interested in parallelizing the PageRank algorithm, which was developed by Google founders for web search ranking based on a numerical importance metric. PageRank works by treating the web as a graph, where webpages are nodes and hyperlinks are edges – a particular webpage receives a high importance score if many pages link to it, or if it is linked by highly ranked pages, thus factoring in both quantity and quality of links. The pseudocode for the algorithm is as follows: </p>
+        <img src="10649542-fig-2-source-large.gif" alt="PageRank Pseudocode">
+        <p>While primarily used for webpage ranking, the PageRank algorithm can also be used for other similar purposes, such as recommendation systems and ranking papers in journals.</p>
+        <p>There are several key components of PageRank that allow it to benefit from parallelism. Within each iteration, the core operation is evaluating the rank update for each node by aggregating contributions from incoming neighbors – in a sequential implementation, this would be done one node at a time, but a parallel implementation can compute different nodes’ updates in parallel, which would improve performance. Additionally, both sparse vector-matrix multiplication (used for traversing adjacency lists) and the iterative power method are highly parallelizable algorithms, so we hope to exploit parallelism here as well.</p>
     </section>
 
     <section id="challenge">
         <h2>Challenge</h2>
-        <p>Parallelizing PageRank is challenging due to the memory-bound nature of the algorithm and the structure of real-world graphs. Each iteration involves scanning many edges, with limited computation per edge, making performance sensitive to memory bandwidth, memory access patterns, and communication overhead. We aim to study how different parallel paradigms handle these irregular, sparse, memory-bound workloads and what bottlenecks dominate in each model.</p>
-    </section>
+        <p>While PageRank lends itself naturally to parallelism, this project is challenging due to performance challenges that will arise from the structure of large real-world graphs and the memory-bound nature of the algorithm. The algorithm requires scanning numerous edges and each iteration has little computation per edge, but requires significant memory movement. This makes overall performance sensitive to memory bandwidth, memory access patterns, and communication overhead in distributed settings. We hope to learn how different parallel paradigms handle irregular, sparse, memory-bound workloads, what bottlenecks will dominate in each model, how graph structure affects load balancing and scaling, and how effectively parallelism can accelerate PageRank given its constraints. </p>
+        <p>PageRank uses an iterative power method, so within each iteration, updates to nodes are independent as long as the previous iteration’s vector is read-only. Because of this, we plan to parallelize node computations, as well as the iterative power method/sparse matrix-vector multiplication, using the different programming models.
 
-    <section id="workload">
-        <h2>Workload</h2>
-        <p>Within each iteration, node updates are independent if the previous iteration's vector is read-only, which allows parallelization across nodes. However, iterations are dependent on previous results, requiring synchronization between steps for correctness.</p>
-    </section>
-
-    <section id="constraints">
-        <h2>Constraints</h2>
-        <p>PageRank is memory-bound rather than compute-bound. Large graphs require significant memory, and random access patterns can exceed cache capacity, causing memory bottlenecks. Performance is limited by memory bandwidth, cache efficiency, and the ability to fit the working set in fast-access memory.</p>
+            However, between iterations, each step depends on the results of the previous step. This is where our dependency would be and where we would need to work to synchronize the program to ensure the correctness of our implementation. 
+        </p>
+        <p>
+            PageRank is primarily memory-bound rather than compute-bound so some constraints would be related to how much memory is required to store large graphs, particularly when dealing with dense matrices. Additionally, cache locality would become a significant constraint as PageRank’s random access patterns and large vector sizes mean that vector value accesses may exceed cache capacity often, leading to costly memory transfers. Thus, performance is restricted by memory bandwidth, cache efficiency, and whether we can fit the critical working set in fast-access memory. 
+        </p>
     </section>
 
     <section id="resources">
         <h2>Resources</h2>
-        <ul>
-            <li>Multi-core CPU nodes for OpenMP and MPI experiments</li>
-            <li>GPU nodes for CUDA implementations</li>
-            <li>Sequential PageRank code as starting point</li>
-            <li>Reference paper: <a href="https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=10649542" target="_blank">Performance Analysis of Parallelized PageRank Algorithm using OpenMP, MPI and CUDA</a></li>
-            <li>PSC Bridges-2 and GHC machines for evaluation and debugging</li>
-        </ul>
+        <p>
+            We will be using multi-core CPU nodes and MPI capable clusters on the PSC Bridges-2 machines if provided which will allow us to run both OpenMP and MPI experiments at varying thread and processor counts. Additionally, to implement parallelism using CUDA, we will also need to use GPU nodes so we can evaluate the performance of PageRank under parallel execution. However, similar to the previous assignments, we will use the GHC machines for debugging purposes and reserve PSC use only for evaluation. We will be starting from the sequential PageRank code and then trying to parallelize that. The paper we will use as reference to how to do this is: “Performance Analysis of Parallelized PageRank Algorithm using OpenMP, MPI and CUDA” where we are given a starting point on how to implement the PageRank Algorithm in a parallel fashion. For now we think these resources would be sufficient and would benefit from access to the PSC machines. 
+        </p>
     </section>
 
     <section id="goals">
         <h2>Goals / Deliverables</h2>
         <h3>Plan to Achieve</h3>
         <ul>
-            <li>Sequential baseline implementation for correctness and speedup comparison</li>
-            <li>Three separate parallel implementations using OpenMP, MPI, and CUDA</li>
-            <li>Performance evaluation: scaling, GPU utilization, memory bandwidth, and communication overhead</li>
+            <li>Sequential Baseline Implementation: This will provide us a baseline for speedup calculations and a reference for correctness            
+
+            </li>
+            <li>3 Separate Parallel Implementations with OpenMP, MPI, CUDA: We will perform power-iteration PageRank until convergence using a CSR/adjacency-list graph representation for each implementation. If we are unable to do all 3 we will at least plan to create implementations of 2 of these methods            
+
+            </li>
+            <li>
+                Performance Evaluation and Speedup Analysis: We will measure the strength of scaling as we increase the number of processors, GPU throughput and utilization for CUDA, computation time, total time, memory bandwidth utilization, and communication overhead for MPI. We expect that all three algorithms will satisfy correctness. We expect to achieve at least a 4x speedup with OpenMP on 16 cores, Distributed speedup with MPI, and at least 8x speedup with CUDA on a moderate sized graph. These metrics were consistent with the results achieved from previous research so we will aim for our results to be comparable or better than them.
+            </li>
         </ul>
 
         <h3>Hope to Achieve</h3>
         <ul>
-            <li>Hybrid parallelism (MPI + OpenMP or MPI + CUDA)</li>
-            <li>Asynchronous Gauss-Seidel PageRank algorithm to improve convergence and memory utilization</li>
+            <li>Hybrid Parallelism: we will attempt to create a hybrid parallel algorithm where we combine either MPI and OpenMP or MPI and CUDA. 
+            </li>
+            <li>We might also implement the asynchronous Gauss-Seidel PageRank algorithm and see if we can get better results with MPI, OpenMP, and CUDA implementations. We hypothesize that if we are able to do this we would get better speedup and memory utilization results as this algorithm would remove global iteration barriers. 
+            </li>
         </ul>
     </section>
 
     <section id="platform-choice">
         <h2>Platform Choice</h2>
-        <p>We chose OpenMP for multicore CPU parallelism, MPI for distributed-memory scaling, and CUDA for GPU acceleration. Each platform fits naturally with PageRank's iterative power method and sparse matrix-vector multiplication operations, allowing us to explore scaling, performance bottlenecks, and memory-bound workload handling.</p>
+        <p>
+            To parallelize our algorithm, we plan to use OpenMP, MPI, and CUDA. OpenMP is well suited for PageRank, since each iteration of the PageRank algorithm contains loops over nodes in the graph that can be parallelized, which would allow us to effectively use multicore CPUs. CUDA is also a good fit, since it’s naturally suited to handle the parallelization of sparse matrix-vector multiplication and iterative powers, which comprise the bulk of PageRank’s computation. Lastly, we chose to explore MPI due to the memory-bound nature of PageRank - MPI allows us to partition the graph across multiple nodes, which in theory would benefit the scalability of PageRank, so we wanted to explore this as well.
+        </p>
     </section>
 
     <section id="schedule">
