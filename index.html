@@ -61,7 +61,7 @@
     <section id="background">
         <h2>Background</h2>
         <p>We are interested in parallelizing the PageRank algorithm, which was developed by Google founders for web search ranking based on a numerical importance metric. PageRank works by treating the web as a graph, where webpages are nodes and hyperlinks are edges – a particular webpage receives a high importance score if many pages link to it, or if it is linked by highly ranked pages, thus factoring in both quantity and quality of links. The pseudocode for the algorithm is as follows: </p>
-        <img src="10649542-fig-2-source-large.gif" alt="PageRank Pseudocode" height=220>
+        <img src="10649542-fig-2-source-large.gif" alt="PageRank Pseudocode" height=500>
         <p>While primarily used for webpage ranking, the PageRank algorithm can also be used for other similar purposes, such as recommendation systems and ranking papers in journals.</p>
         <p>There are several key components of PageRank that allow it to benefit from parallelism. Within each iteration, the core operation is evaluating the rank update for each node by aggregating contributions from incoming neighbors – in a sequential implementation, this would be done one node at a time, but a parallel implementation can compute different nodes’ updates in parallel, which would improve performance. Additionally, both sparse vector-matrix multiplication (used for traversing adjacency lists) and the iterative power method are highly parallelizable algorithms, so we hope to exploit parallelism here as well.</p>
     </section>
