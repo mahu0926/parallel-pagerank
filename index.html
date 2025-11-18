@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallelized PageRank Project</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+        header, footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #003366;
+            color: white;
+        }
+        h1, h2, h3 {
+            color: #003366;
+        }
+        section {
+            background-color: white;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        a {
+            color: #003366;
+        }
+        ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #003366;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Parallelized PageRank With OpenMP, MPI, CUDA</h1>
+        <p>Varshini Subramanian (vsubrama), Mahati Manda (mmanda)</p>
+    </header>
+
+    <section id="project-url">
+        <h2>Project URL</h2>
+        <p><a href="#">Insert your GitHub Pages URL here</a></p>
+    </section>
+
+    <section id="summary">
+        <h2>Summary</h2>
+        <p>We plan to implement and optimize a parallelized version of the PageRank algorithm using three complementary parallel programming models: OpenMP, MPI, and CUDA, to measure the importance of different nodes in a network. Our goal is to design and benchmark our parallel implementation and compare it against the sequential implementation and potentially other parallel implementations if time persists.</p>
+    </section>
+
+    <section id="background">
+        <h2>Background</h2>
+        <p>PageRank, developed by Google founders, is a web search ranking algorithm based on numerical importance metrics. It treats the web as a graph where webpages are nodes and hyperlinks are edges. A webpage receives a high importance score if many pages link to it or if it is linked by highly ranked pages, factoring in both quantity and quality of links.</p>
+        <p>Pseudocode for the algorithm:</p>
+        <pre>
+While not converged:
+    For each node in graph:
+        Compute new rank from in-neighbors
+    Update ranks
+        </pre>
+        <p>While primarily used for webpage ranking, PageRank can also be applied to recommendation systems, citation analysis, and ranking papers or other networks.</p>
+        <p>The algorithm is well-suited for parallelism: each node's update can be computed independently per iteration, and the sparse matrix-vector multiplication and iterative power method are highly parallelizable.</p>
+    </section>
+
+    <section id="challenge">
+        <h2>Challenge</h2>
+        <p>Parallelizing PageRank is challenging due to the memory-bound nature of the algorithm and the structure of real-world graphs. Each iteration involves scanning many edges, with limited computation per edge, making performance sensitive to memory bandwidth, memory access patterns, and communication overhead. We aim to study how different parallel paradigms handle these irregular, sparse, memory-bound workloads and what bottlenecks dominate in each model.</p>
+    </section>
+
+    <section id="workload">
+        <h2>Workload</h2>
+        <p>Within each iteration, node updates are independent if the previous iteration's vector is read-only, which allows parallelization across nodes. However, iterations are dependent on previous results, requiring synchronization between steps for correctness.</p>
+    </section>
+
+    <section id="constraints">
+        <h2>Constraints</h2>
+        <p>PageRank is memory-bound rather than compute-bound. Large graphs require significant memory, and random access patterns can exceed cache capacity, causing memory bottlenecks. Performance is limited by memory bandwidth, cache efficiency, and the ability to fit the working set in fast-access memory.</p>
+    </section>
+
+    <section id="resources">
+        <h2>Resources</h2>
+        <ul>
+            <li>Multi-core CPU nodes for OpenMP and MPI experiments</li>
+            <li>GPU nodes for CUDA implementations</li>
+            <li>Sequential PageRank code as starting point</li>
+            <li>Reference paper: <a href="https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=10649542" target="_blank">Performance Analysis of Parallelized PageRank Algorithm using OpenMP, MPI and CUDA</a></li>
+            <li>PSC Bridges-2 and GHC machines for evaluation and debugging</li>
+        </ul>
+    </section>
+
+    <section id="goals">
+        <h2>Goals / Deliverables</h2>
+        <h3>Plan to Achieve</h3>
+        <ul>
+            <li>Sequential baseline implementation for correctness and speedup comparison</li>
+            <li>Three separate parallel implementations using OpenMP, MPI, and CUDA</li>
+            <li>Performance evaluation: scaling, GPU utilization, memory bandwidth, and communication overhead</li>
+        </ul>
+
+        <h3>Hope to Achieve</h3>
+        <ul>
+            <li>Hybrid parallelism (MPI + OpenMP or MPI + CUDA)</li>
+            <li>Asynchronous Gauss-Seidel PageRank algorithm to improve convergence and memory utilization</li>
+        </ul>
+    </section>
+
+    <section id="platform-choice">
+        <h2>Platform Choice</h2>
+        <p>We chose OpenMP for multicore CPU parallelism, MPI for distributed-memory scaling, and CUDA for GPU acceleration. Each platform fits naturally with PageRank's iterative power method and sparse matrix-vector multiplication operations, allowing us to explore scaling, performance bottlenecks, and memory-bound workload handling.</p>
+    </section>
+
+    <section id="schedule">
+        <h2>Schedule</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Week</th>
+                    <th>Date</th>
+                    <th>Weekly Goal</th>
+                    <th>Deadline</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>11/17–11/23</td>
+                    <td>
+                        Implement Sequential PageRank<br>
+                        Create validation script<br>
+                        Implement OpenMP parallelization<br>
+                        Evaluate OpenMP performance
+                    </td>
+                    <td>Project Proposal Due</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>11/24–11/30</td>
+                    <td>
+                        Implement MPI parallelization<br>
+                        Evaluate MPI performance<br>
+                        Implement CUDA parallelization<br>
+                        Evaluate CUDA performance
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>12/1–12/7</td>
+                    <td>
+                        Further performance evaluation<br>
+                        If time: implement hybrid or Gauss-Seidel PageRank<br>
+                        Finalize report
+                    </td>
+                    <td>Milestone Report Due</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>12/8–12/12</td>
+                    <td>Finalize project and submit final report</td>
+                    <td>Final Report Due</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="resources-links">
+        <h2>References</h2>
+        <ul>
+            <li><a href="https://en.wikipedia.org/wiki/PageRank" target="_blank">Wikipedia: PageRank</a></li>
+            <li><a href="https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=10649542" target="_blank">IEEE Paper: Parallelized PageRank</a></li>
+            <li><a href="http://infolab.stanford.edu/~backrub/google.html" target="_blank">Stanford: Original PageRank Description</a></li>
+        </ul>
+    </section>
+
+    <footer>
+        <p>&copy; 2025 Varshini Subramanian & Mahati Manda</p>
+    </footer>
+</body>
+</html>
