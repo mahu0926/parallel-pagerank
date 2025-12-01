@@ -64,8 +64,73 @@
         <p>Varshini Subramanian (vsubrama), Mahati Manda (mmanda)</p>
     </header>
 
+    <section id="milestone">
+        <h2>Milestone Report</h2>
+        
+        <h3>Revised Schedule</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Day</th>
+                    <th>Date</th>
+                    <th>Task</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Monday</td>
+                    <td>12/1/2025</td>
+                    <td>Milestone Report Due</td>
+                </tr>
+                <tr>
+                    <td>Tuesday</td>
+                    <td>12/2/2025</td>
+                    <td>Finish CUDA Implementation</td>
+                </tr>
+                <tr>
+                    <td>Wednesday</td>
+                    <td>12/3/2025</td>
+                    <td>Get evaluation metrics for OpenMP</td>
+                </tr>
+                <tr>
+                    <td>Thursday</td>
+                    <td>12/4/2025</td>
+                    <td>Get evaluation metrics for CUDA</td>
+                </tr>
+                <tr>
+                    <td>Friday</td>
+                    <td>12/5/2025</td>
+                    <td>Finalize Report<br>If time: Implement Hybrid Parallelism</td>
+                </tr>
+                <tr>
+                    <td>Monday</td>
+                    <td>12/8/2025</td>
+                    <td>Final Report Due</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Pivots We Made</h3>
+        <p>We decided to use OpenMP instead of MPI in our implementation because it provides a more natural and efficient model for the type of parallelism required in PageRank. This is because PageRank involves repeatedly updating every node's rank using shared global data (the rank vector) and OpenMP's shared-memory paradigm avoids the overhead of explicit message passing. Each thread can directly access the common adjacency lists and rank values, making synchronization simpler and reducing communication cost. Thus we felt that it would be a little more suitable and efficient for this project to use OpenMP and CUDA instead.</p>
+
+        <h3>Summary of Work Completed</h3>
+        <p>We were able to finish our sequential implementation and wrote some validation code. We also specified our evaluation plan to make PageRank problems that are easy, medium, hard, and extreme and then evaluate timing metrics for OpenMP and CUDA with each of those examples. We were also able to finish our OpenMP implementation and verification.</p>
+
+        <h3>Progress</h3>
+        <p>Due to unexpected travel conflicts we are slightly behind on finishing our CUDA implementation and evaluation but our original plan accounted for this and had this week as a buffer week so we will be able to finish our deliverables with the revised plan. One nice-to-have we might try to achieve is getting further evaluation metrics and potentially the hybrid parallelism of CUDA and OpenMP.</p>
+
+        <h3>What to Show at Poster Session</h3>
+        <p>N/A</p>
+
+        <h3>Preliminary Results</h3>
+        <p><em>GHC machine metrics for sequential and OpenMP to be added</em></p>
+
+        <h3>Issues</h3>
+        <p>As of now we don't have any issues.</p>
+    </section>
+
     <div class="main-section">
-        <h2>Project Proposa l</h2>
+        <h2>Project Proposal</h2>
         
         <section id="summary">
             <h3>Summary</h3>
@@ -193,71 +258,6 @@
             </ul>
         </section>
     </div>
-
-    <section id="milestone">
-        <h2>Milestone Report</h2>
-        
-        <h3>Revised Schedule</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Day</th>
-                    <th>Date</th>
-                    <th>Task</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Monday</td>
-                    <td>12/1/2025</td>
-                    <td>Milestone Report Due</td>
-                </tr>
-                <tr>
-                    <td>Tuesday</td>
-                    <td>12/2/2025</td>
-                    <td>Finish CUDA Implementation</td>
-                </tr>
-                <tr>
-                    <td>Wednesday</td>
-                    <td>12/3/2025</td>
-                    <td>Get evaluation metrics for OpenMP</td>
-                </tr>
-                <tr>
-                    <td>Thursday</td>
-                    <td>12/4/2025</td>
-                    <td>Get evaluation metrics for CUDA</td>
-                </tr>
-                <tr>
-                    <td>Friday</td>
-                    <td>12/5/2025</td>
-                    <td>Finalize Report<br>If time: Implement Hybrid Parallelism</td>
-                </tr>
-                <tr>
-                    <td>Monday</td>
-                    <td>12/8/2025</td>
-                    <td>Final Report Due</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <h3>Pivots We Made</h3>
-        <p>We decided to use OpenMP instead of MPI in our implementation because it provides a more natural and efficient model for the type of parallelism required in PageRank. This is because PageRank involves repeatedly updating every node's rank using shared global data (the rank vector) and OpenMP's shared-memory paradigm avoids the overhead of explicit message passing. Each thread can directly access the common adjacency lists and rank values, making synchronization simpler and reducing communication cost. Thus we felt that it would be a little more suitable and efficient for this project to use OpenMP and CUDA instead.</p>
-
-        <h3>Summary of Work Completed</h3>
-        <p>We were able to finish our sequential implementation and wrote some validation code. We also specified our evaluation plan to make PageRank problems that are easy, medium, hard, and extreme and then evaluate timing metrics for OpenMP and CUDA with each of those examples. We were also able to finish our OpenMP implementation and verification.</p>
-
-        <h3>Progress</h3>
-        <p>Due to unexpected travel conflicts we are slightly behind on finishing our CUDA implementation and evaluation but our original plan accounted for this and had this week as a buffer week so we will be able to finish our deliverables with the revised plan. One nice-to-have we might try to achieve is getting further evaluation metrics and potentially the hybrid parallelism of CUDA and OpenMP.</p>
-
-        <h3>What to Show at Poster Session</h3>
-        <p>N/A</p>
-
-        <h3>Preliminary Results</h3>
-        <p><em>GHC machine metrics for sequential and OpenMP to be added</em></p>
-
-        <h3>Issues</h3>
-        <p>As of now we don't have any issues.</p>
-    </section>
 
     <footer>
         <p>&copy; 2025 Varshini Subramanian & Mahati Manda</p>
