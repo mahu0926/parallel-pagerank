@@ -8,7 +8,7 @@
         body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
-            margin: 20px;
+            margin: 0;
             background-color: #f9f9f9;
         }
         header, footer {
@@ -16,6 +16,43 @@
             padding: 10px;
             background-color: #003366;
             color: white;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            background-color: #003366;
+            padding: 0;
+            margin: 0;
+            border-bottom: 3px solid #002244;
+        }
+        .tab-button {
+            background-color: #003366;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            border-right: 1px solid #002244;
+        }
+        .tab-button:hover {
+            background-color: #004080;
+        }
+        .tab-button.active {
+            background-color: #0059b3;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px;
+            animation: fadeIn 0.5s;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         section {
             background-color: white;
@@ -45,17 +82,6 @@
             background-color: #003366;
             color: white;
         }
-        .main-section {
-            background-color: #e6f2ff;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 8px;
-            border-left: 5px solid #003366;
-        }
-        .main-section h2 {
-            margin-top: 0;
-            color: #003366;
-        }
     </style>
 </head>
 <body>
@@ -64,74 +90,179 @@
         <p>Varshini Subramanian (vsubrama), Mahati Manda (mmanda)</p>
     </header>
 
-    <section id="milestone">
-        <h2>Milestone Report</h2>
-        
-        <h3>Revised Schedule</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Day</th>
-                    <th>Date</th>
-                    <th>Task</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Monday</td>
-                    <td>12/1/2025</td>
-                    <td>Milestone Report Due</td>
-                </tr>
-                <tr>
-                    <td>Tuesday</td>
-                    <td>12/2/2025</td>
-                    <td>Finish CUDA Implementation</td>
-                </tr>
-                <tr>
-                    <td>Wednesday</td>
-                    <td>12/3/2025</td>
-                    <td>Get evaluation metrics for OpenMP</td>
-                </tr>
-                <tr>
-                    <td>Thursday</td>
-                    <td>12/4/2025</td>
-                    <td>Get evaluation metrics for CUDA</td>
-                </tr>
-                <tr>
-                    <td>Friday</td>
-                    <td>12/5/2025</td>
-                    <td>Finalize Report<br>If time: Implement Hybrid Parallelism</td>
-                </tr>
-                <tr>
-                    <td>Monday</td>
-                    <td>12/8/2025</td>
-                    <td>Final Report Due</td>
-                </tr>
-            </tbody>
-        </table>
+    <div class="tabs">
+        <button class="tab-button active" onclick="openTab(event, 'milestone')">Milestone Report</button>
+        <button class="tab-button" onclick="openTab(event, 'proposal')">Project Proposal</button>
+    </div>
 
-        <h3>Pivots We Made</h3>
-        <p>We decided to use OpenMP instead of MPI in our implementation because it provides a more natural and efficient model for the type of parallelism required in PageRank. This is because PageRank involves repeatedly updating every node's rank using shared global data (the rank vector) and OpenMP's shared-memory paradigm avoids the overhead of explicit message passing. Each thread can directly access the common adjacency lists and rank values, making synchronization simpler and reducing communication cost. Thus we felt that it would be a little more suitable and efficient for this project to use OpenMP and CUDA instead.</p>
+    <div id="milestone" class="tab-content active">
+        <section>
+            <h2>Milestone Report</h2>
+            
+            <h3>Initial Schedule</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Week</th>
+                        <th>Day</th>
+                        <th>Date</th>
+                        <th>Weekly Goal</th>
+                        <th>Deadline</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td rowspan="7">1</td>
+                        <td>M</td>
+                        <td>11/17/2025</td>
+                        <td rowspan="7">
+                            <del>Implement Sequential PageRank</del><br>
+                            <del>Create validation script to check other programs against</del><br>
+                            <del>Implement OpenMP Parallelization</del><br>
+                            Evaluate OpenMP Performance
+                        </td>
+                        <td rowspan="7">Project Proposal Due</td>
+                    </tr>
+                    <tr><td>T</td><td>11/18/2025</td></tr>
+                    <tr><td>W</td><td>11/19/2025</td></tr>
+                    <tr><td>Th</td><td>11/20/2025</td></tr>
+                    <tr><td>F</td><td>11/21/2025</td></tr>
+                    <tr><td>Sa</td><td>11/22/2025</td></tr>
+                    <tr><td>Su</td><td>11/23/2025</td></tr>
+                    
+                    <tr>
+                        <td rowspan="7">2</td>
+                        <td>M</td>
+                        <td>11/24/2025</td>
+                        <td rowspan="7">
+                            Implement MPI Parallelization<br>
+                            Evaluate MPI Performance<br>
+                            Implement CUDA Parallelization<br>
+                            Evaluate CUDA Performance
+                        </td>
+                        <td rowspan="7"></td>
+                    </tr>
+                    <tr><td>T</td><td>11/25/2025</td></tr>
+                    <tr><td>W</td><td>11/26/2025</td></tr>
+                    <tr><td>Th</td><td>11/27/2025</td></tr>
+                    <tr><td>F</td><td>11/28/2025</td></tr>
+                    <tr><td>Sa</td><td>11/29/2025</td></tr>
+                    <tr><td>Su</td><td>11/30/2025</td></tr>
+                    
+                    <tr>
+                        <td rowspan="7">3</td>
+                        <td>M</td>
+                        <td>12/1/2025</td>
+                        <td rowspan="7">
+                            Further Performance Evaluation<br>
+                            If time: Implement Hybrid Parallelism or Gauss-Seidel PageRank Algorithm<br>
+                            Finalize Report
+                        </td>
+                        <td rowspan="7">Milestone Report Due</td>
+                    </tr>
+                    <tr><td>T</td><td>12/2/2025</td></tr>
+                    <tr><td>W</td><td>12/3/2025</td></tr>
+                    <tr><td>Th</td><td>12/4/2025</td></tr>
+                    <tr><td>F</td><td>12/5/2025</td></tr>
+                    <tr><td>Sa</td><td>12/6/2025</td></tr>
+                    <tr><td>Su</td><td>12/7/2025</td></tr>
+                    
+                    <tr>
+                        <td>4</td>
+                        <td>M</td>
+                        <td>12/8/2025</td>
+                        <td></td>
+                        <td>Final Report Due</td>
+                    </tr>
+                </tbody>
+            </table>
 
-        <h3>Summary of Work Completed</h3>
-        <p>We were able to finish our sequential implementation and wrote some validation code. We also specified our evaluation plan to make PageRank problems that are easy, medium, hard, and extreme and then evaluate timing metrics for OpenMP and CUDA with each of those examples. We were also able to finish our OpenMP implementation and verification.</p>
+            <h3>Revised Plan</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Week</th>
+                        <th>Day</th>
+                        <th>Date</th>
+                        <th>Tasks</th>
+                        <th>Deadline</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td rowspan="7">3</td>
+                        <td>M</td>
+                        <td>12/1/2025</td>
+                        <td></td>
+                        <td>Milestone Report Due</td>
+                    </tr>
+                    <tr>
+                        <td>T</td>
+                        <td>12/2/2025</td>
+                        <td>Finish CUDA Implementation - Mahati + Varshini<br>Finalize more extensive test cases for evaluation - Mahati + Varshini</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>W</td>
+                        <td>12/3/2025</td>
+                        <td>Gather baseline performance metrics for sequential implementation - Mahati + Varshini<br>Gather preliminary performance metrics for OpenMP and tweak implementation as necessary - Varshini</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Th</td>
+                        <td>12/4/2025</td>
+                        <td>Gather final performance metrics for OpenMP - Varshini<br>Gather preliminary performance metrics for CUDA, tweak implementation as necessary - Mahati</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>F</td>
+                        <td>12/5/2025</td>
+                        <td>Gather final performance metrics for CUDA - Mahati<br>Finalize all results for final report - Mahati + Varshini</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Sa</td>
+                        <td>12/6/2025</td>
+                        <td>Run further scripts to include demos in final report - Mahati + Varshini<br>Work on report - Mahati + Varshini</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Su</td>
+                        <td>12/7/2025</td>
+                        <td>Finalize report - Mahati + Varshini</td>
+                        <td></td>
+                    </tr>
+                    
+                    <tr>
+                        <td>4</td>
+                        <td>M</td>
+                        <td>12/8/2025</td>
+                        <td></td>
+                        <td>Final Report Due</td>
+                    </tr>
+                </tbody>
+            </table>
 
-        <h3>Progress</h3>
-        <p>Due to unexpected travel conflicts we are slightly behind on finishing our CUDA implementation and evaluation but our original plan accounted for this and had this week as a buffer week so we will be able to finish our deliverables with the revised plan. One nice-to-have we might try to achieve is getting further evaluation metrics and potentially the hybrid parallelism of CUDA and OpenMP.</p>
+            <h3>Work Completed</h3>
+            <p>Thus far, we have completed both our sequential and OpenMP implementations, and verified their correctness by testing on several simple graphs (ranging from 3-10 nodes). We also finished our testing suite (primarily consisting of our validation script) that more extensive test cases can plug into to benchmark our sequential and parallel implementations. Lastly, we started and are currently working on our CUDA implementation, as well as generating graphs with a couple thousand vertices to use for benchmarking.</p>
 
-        <h3>What to Show at Poster Session</h3>
-        <p>N/A</p>
+            <h3>Goals and Deliverables</h3>
+            <p>Based on the feedback we received on our proposal, we decided to focus more on analyzing parallelism bottlenecks due to the memory bound nature of our problems, as well as optimizing parallel operations to be more efficient based on this constraint. Therefore, we decided to scrap our MPI implementation, and instead focus on parallelism with just OpenMP and CUDA.</p>
+            
+            <p>Additionally, due to unexpected travel conflicts, we are slightly behind on finishing our CUDA implementation and evaluation; however, our original plan did account for this, and included this week as a buffer week, so we will finish our intended goals with the revised plans. Therefore, we believe we can achieve our goals of a sequential baseline implementation, 2 parallel implementations (using OpenMP and CUDA), and performance evaluation/speedup analysis. However, we likely will not have time to implement our nice-to-have goals of hybrid parallelism and Gauss-Seidel PageRank. The updated list of goals is as follows:</p>
+            
+            <ul>
+                <li><strong>Sequential Baseline Implementation:</strong> This will provide us a baseline for speedup calculations and a reference for correctness</li>
+                <li><strong>Parallel Implementations with OpenMP and CUDA:</strong> We will perform power-iteration PageRank until convergence using a CSR/adjacency-list graph representation for each implementation.</li>
+                <li><strong>Performance Evaluation and Speedup Analysis:</strong> We will measure the strength of scaling as we increase the number of processors (OpenMP), as well as GPU throughput and utilization (CUDA).</li>
+            </ul>
 
-        <h3>Preliminary Results</h3>
-        <p><em>GHC machine metrics for sequential and OpenMP to be added</em></p>
+            <h3>Issues</h3>
+            <p>No major issues - we just need to finish our implementations and get to benchmarking!</p>
+        </section>
+    </div>
 
-        <h3>Issues</h3>
-        <p>As of now we don't have any issues.</p>
-    </section>
-
-    <div class="main-section">
-        <h2>Project Proposal</h2>
-        
+    <div id="proposal" class="tab-content">
         <section id="summary">
             <h3>Summary</h3>
             <p>We plan to implement and optimize a parallelized version of the PageRank algorithm using three complementary parallel programming models: OpenMP, MPI, and CUDA, to measure the importance of different nodes in a network. Our goal is to design and benchmark our parallel implementation and compare it against the sequential implementation and potentially other parallel implementations if time persists. </p>
@@ -262,5 +393,27 @@
     <footer>
         <p>&copy; 2025 Varshini Subramanian & Mahati Manda</p>
     </footer>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabContent, tabButtons;
+            
+            // Hide all tab content
+            tabContent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabContent.length; i++) {
+                tabContent[i].classList.remove("active");
+            }
+            
+            // Remove active class from all buttons
+            tabButtons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabButtons.length; i++) {
+                tabButtons[i].classList.remove("active");
+            }
+            
+            // Show the current tab and mark button as active
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+    </script>
 </body>
 </html>
