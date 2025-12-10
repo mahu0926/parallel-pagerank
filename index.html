@@ -91,11 +91,176 @@
     </header>
 
     <div class="tabs">
-        <button class="tab-button active" onclick="openTab(event, 'milestone')">Milestone Report</button>
+        <button class="tab-button active" onclick="openTab(event, 'final')">Final Report</button>
+        <button class="tab-button" onclick="openTab(event, 'milestone')">Milestone Report</button>
         <button class="tab-button" onclick="openTab(event, 'proposal')">Project Proposal</button>
     </div>
 
-    <div id="milestone" class="tab-content active">
+    <div id="final" class="tab-content active">
+        <section>
+            <h3>Summary</h3>
+            <p>This project investigates how to parallelize the PageRank algorithm using the computing frameworks: OpenMP on CPUs and CUDA on GPUs. After implementing a sequential baseline, we parallelized the algorithm, focusing on the sparse matrix-vector multiplication in the algorithm. With OpenMP, we optimized performance through a single parallel region, reductions for dangling-node mass, and adjacency lists, achieving up to a 15x speedup on the PSC machines (with 128 threads). For CUDA, we explored multiple graph representations before adopting the CSR format, addressed race conditions with atomic operations, handled dangling-node mass to prevent the “black hole” rank loss, and reduced kernel launches to achieve a speedup ranging from 5-17x depending on the network size. Overall, the results we were able to achieve highlight that PageRank is highly parallelizable, especially with GPUs, which offer substantial performance gains as the graph size increases. 
+            </p>
+        </section>
+
+        <section>
+            <h3>Background</h3>
+            <p>In this project, we parallelized the PageRank algorithm, developed by Google founders Larry Page and Sergey Brin to estimate the importance of webpages based on the hyperlinks between them. We wanted to explore how this algorithm could be parallelized with different frameworks. 
+            </p>
+            <h4>1. Data Structures</h4>
+            <p>The sequential algorithm works by treating the web as a directed graph
+                G=(V, E)
+                where V is the set of vertices, and E is the set of all directed edges. The web graph treats each webpage as a node v in V, and each hyperlink as a directed edge e in E.</p>
+            <p> We represented the graph as an adjacency list A, where A[n] represents the outgoing neighbors from node n (i.e. webpages that node n links to). We also chose to represent nodes as integers, and 0-index the nodes for consistency across our OpenMP (CPU) and CUDA (GPU) implementations. We also store two arrays, old_rank and new_rank, which store the ranks from the previous iteration and the ranks from the current iteration, respectively. 
+            </p>
+            <h4>2. Algorithm Overview</h4>
+            <p>The PageRank algorithm takes in the following inputs: a directed web graph, a damping factor d, and a fixed number of iterations to run the algorithm. It outputs a list of ranks (where the sum of the ranks is 1) for each webpage in the graph, where the ranks form a probabilistic distribution to indicate the importance of each webpage.</p>
+            <p>The PageRank algorithm is an iterative process to compute the final ranks of each webpage. At the start of the algorithm, the ranks uniformly initialized to 1/|V|. Each iteration consists of three overall operations: </p>
+            <ul>
+                <li><strong>Dangling Node Mass Computation:</strong> Aggregates contributions from dangling nodes by treating them as linking to all webpages equally. This prevents "rank sinks" where dangling nodes trap importance.</li>
+                <li><strong>Incoming Neighbor Contribution:</strong> For each webpage n, aggregates contributions from incoming neighbors, where neighbor i contributes old_rank[i]/out_degree[i].</li>
+                <li><strong>Final Rank Calculation:</strong> Sums dangling-node mass and incoming neighbors, multiplies by damping factor d, and adds teleportation term (1-d)/|V|. Pointers for old_rank and new_rank swap for next iteration.</li>
+            </ul>
+            <p>This process continues for a fixed number of iterations. The pseudocode is shown below:             </p>
+            <h4>3. Parallelism Opportunities and Data Dependencies</h4>
+            <p>The most computationally expensive part of this algorithm is the incoming neighbor contribution, which essentially operates as a sparse matrix-vector multiplication (SpMV), where the graph is a sparse adjacency matrix, and the ranks are a vector. This section involves iterating over every edge in the graph, and therefore has This section has time complexity O(|E|) per iteration, since the number of edges dominates the number of vertices in most web graphs, and could therefore benefit the most from parallelization with this algorithm.
+            </p>
+            <p>With this algorithm, iteration i+1 depends on iteration i, which necessitates a synchronization barrier at the end of every iteration. However, within an iteration, the new ranks for each node can be computed independently (i.e. the ranks for each node don’t depend on one another), so this lends itself nicely to data-parallelism, where we can assign different subsets of nodes to different threads. In cases where there are “hub” nodes (nodes with a lot of outgoing edges), this would lead to load imbalance, but we did not notice this to be a problem with the graphs that we tested on (we tested on Internet peer-to-peer networks from the Stanford Large Network Dataset Collection). 
+            </p>
+            <p>One interesting and important thing to note is that this problem is limited by memory bandwidth, especially with more threads. Accessing neighbors means irregular memory access patterns, which subsequently means more cache misses and poor spatial locality. Because of this, the computational bottleneck in the algorithm (graph edge traversal) is not amenable to SIMD execution, which means that the algorithm performance would not benefit from using SIMD.
+            </p>
+        </section>
+
+        <section>
+            <h3>Approach</h3>
+            <h4>1. Sequential Algorithm (Baseline)</h4>
+            <p>The first algorithm that we implemented was the sequential baseline algorithm, which followed the pseudocode presented earlier but used a “push-based” approach instead of a “pull-based” approach. That is, for Step 2 of the algorithm (incoming neighbor contribution), we iterated over all nodes and added their contribution to their outgoing neighbors - this ended being more efficient than a “pull-based” approach, where we iterated over incoming neighbors, for sequential, though we modified this for our OpenMP implementation. We verified that this implementation was correct using a validation script - specifically, we checked that the ranks outputted by the algorithm summed to 1, and converged to approximately the same values as the ranks outputted by the PageRank implementation included in the Python NetworkX package. Implementing this algorithm gave us a strong idea of how the algorithm worked as well as any dependencies that we had to be aware of when parallelizing, and gave us a strong foundation for our OpenMP implementation.   
+            </p>
+            <h4>2. OpenMP</h4>
+            <p>To implement parallelization on CPU resources, we used OpenMP for single-node parallelism. We chose this approach, since we believed that the shared-memory model native to OpenMP would be better suited for large graphs, since it eliminates the communication overhead associated with replicating this graph across all threads. That is, OpenMP allows  a single instance of the graph’s adjacency list to exist in main memory, while other CPU parallelization frameworks such as MPI require the graph to be replicated across all threads, which could potentially exhaust CPU resources for large graphs. 
+            </p>
+            <h5>2.1. Initial Implementation</h5>
+            <p>Our OpenMP implementation started with our serial implementation that we previously implemented. For our initial parallel implementation, we decided to put a #pragma omp parallel for derivative around each of the loops that we wanted to parallelize - this effectively divided each of the nodes in the graph between the different threads. Additionally, for computing dangling node contributions, we chose to define a reduction (since we were adding to a shared variable). This allowed us to achieve ~5x speedup on gnutella-31.txt with 8 threads – we chose to use this file for preliminary testing for performance, since it was the largest and could therefore benefit the most from parallelism –  but we believed that we could do better, so we turned our attention to optimizing the code. 
+            </p>
+            <h5>2.2. Optimizations
+            </h5>
+            <p>Our first optimization was only introducing one parallel section - we realized that creating several #pragma omp parallel for sections introduced a lot of fork/join overhead, so we decided to create one parallel section and introduce barriers for synchronization at the end of every step so that all dependencies would be preserved. Since we only had one parallel section, we decided to handle dangling node contributions by defining a shared variable (outside of the parallel region) for dangling node mass, so that threads could use a reduction to update the same variable with their local contributions, thus minimizing communication overhead. 
+            </p>
+            <p>
+                Our second optimization was to introduce both in and out adjacency lists, in an attempt to maximize locality. This made it possible to implement a “pull-based” approach for adding contributions from incoming neighbors, since we could easily scan through a node’s incoming neighbors using the data structure that we created. This eliminated atomic writes completely, since only one thread was ever responsible for writing to  new_rank[i]; this also introduced better cache locality, since new_rank was being written to sequentially. Together, these optimizations gave us ~5.75x speedup on gnutella-31.txt with 8 threads. The final implementation of our code is below.
+            </p>
+            <h4>3. CUDA</h4>
+            <p>The second parallelization technique we decided to apply to PageRank was with CUDA. CUDA enabled us to harness GPU resources rather than CPU resources and to parallelize by breaking a larger problem into smaller chunks that a GPU could process simultaneously. We chose CUDA because the PageRank algorithm has several characteristics that map well to GPUs. These include that PageRank is essentially an iterative power method applied to a larger, sparse adjacency matrix, dominated by repeated sparse matrix-vector multiplications (SpMV) and simple vector updates. Another reason CUDA fits well is that it provides lightweight threads and a high memory bandwidth to process multiple vertices or edges in parallel and stream graph data efficiently. However, there are tradeoffs: the major bottlenecks for implementing SpMV with CUDA, and therefore limiting our pagerank performance, are global memory accesses and workload divergence amongst the threads. 
+            </p>
+            <h5>3.1 Preliminary Implementations
+            </h5>
+            <h5>3.1.1 Choosing a Representation
+            </h5>
+            <p>While implementing this code, the first major issue we came across was the representation of the graph. 
+            </p>
+            <p><u>Adjacency List
+            </u></p>
+            <p>Our initial CUDA implementation used an adjacency list to store outgoing edges, but its irregular structure caused load imbalance across threads. Accessing neighbor lists required scattered memory accesses, leading to high latency and divergence among threads. These properties prevented us from fully utilizing GPU parallelism.
+            </p>
+            <p><u>Adjacency Matrix
+            </u></p>
+            <p>Next, we tried an adjacency matrix. This approach was simple but inefficient, requiring O(n2) memory even for sparse graphs and forcing threads to process mostly zero entries. Our attempt to parallelize over both gpu_rank and gpu_graph using a dense matrix pattern was unsuitable for PageRank, which works on sparse neighbor lists. Adjacency matrices offered uniformity but suffered from space inefficiency and excessive work on zeros.
+            </p>
+            <p><u>CSR: Compressed Sparse Row Format</u></p>
+            <p>Finally, we adopted the Compressed Sparse Row (CSR) format, which stores nonzero entries contiguously and enables predictable memory access for outgoing edges. CSR reduces warp divergence and only requires O(n+m) memory. It avoids iteration over zeros and allows efficient, coalesced memory usage, making it the best choice for our CUDA PageRank implementation.
+            </p>
+            <h5>3.1.2 Atomic Logic and Synchronization
+            </h5>
+            <p>We deliberately wanted to separate the functions into multiple kernels to avoid race conditions. Initially, we took each method in the sequential implementation of PageRank and tried to create a separate kernel. So, for example, we had separate kernels for: initializing the ranks uniformly, getting the sum of the dangling nodes, computing new ranks base values, adding the contributions of all of the neighbors, and then setting the new ranks. However, this mapping from the CPU implementation was not efficient for the GPU, since every kernel launch has an overhead and requires global ordering. Thus, launching multiple kernels for small sections of code ended up adding more latency than we expected. In addition to the latency, this was causing repeated global memory traffic and was not leveraging good locality. Due to this issue, we decided to reduce the number of kernels for the computation. We ended up with 3 main kernels, one to initialize the ranks, one to calculate the neighbor contributions and add them to our rank, and then another to find the difference between the new rank and the old rank for convergence. 
+            </p>
+            <p>In addition to this, we came across an issue where we were getting race conditions.  When debugging, we noticed inconsistent and unstable rank outputs between runs, even when using the same graph. To track down the issue, we temporarily added checks after each kernel by copying partial rank arrays back to the CPU and printing differences. This made it clear that inconsistencies arose specifically during the accumulation of neighbor contributions, indicating a race condition. The root cause was that multiple threads were simultaneously updating the rank of the same destination node without any form of synchronization. To fix this, we replaced direct writes to the new_rank with atomicAdd, ensuring that concurrent updates to the same rank entry are serialized safely.
+            </p>
+            <h5>3.1.3 Black Hole Problem
+            </h5>
+            <p>Another major issue we encountered was the classical “black hole” problem caused by dangling nodes, nodes with no outgoing edges. In our early CUDA implementation, rank was only propagated through explicit edges, so nodes with out-degree zero contributed nothing during the neighbor-distribution step. This meant that whenever the random surfer landed on a dangling node, its entire rank allocation effectively disappeared from the system instead of being redistributed. Over many iterations, this created a compounding decay in total rank: each iteration multiplied the remaining mass by the damping factor, causing the global rank sum to collapse toward zero. This bug was subtle because the kernels themselves were functioning correctly from a memory standpoint, but the error was in the mathematical logic. We corrected it by tracking the total rank held by all dangling nodes during each iteration and uniformly redistributing that probability mass back to every node before computing the next iteration’s ranks. Once this redistribution was implemented properly, the PageRank values stabilized, and the total rank sum remained consistently around 1.0.
+            </p>
+            <h5>3.2 Final Implementation
+            </h5>
+            <p>We integrated the compressed row format with the atomic and dangling node logic improvements from the previous implementations for the final version of our code. Here is a more detailed rundown of what we did to synchronize the code and why we were not able to reach full speedup.
+            </p>
+            <p><u>Synchronization</u></p>
+            <p>In the CUDA implementation of PageRank, we separated the work into multiple kernels to avoid race conditions and to ensure a strict ordering of operations across the GPU. Separating the neighbor‐contribution phase and the finalization phase into distinct kernels allowed the GPU to complete all updates from one stage before the next began, giving us a clean ordering model:
+            </p>
+            <ol>
+                <li>Compute all contributions
+                </li>
+                <li>Synchronize</li>
+                <li>Finalize ranks</li>
+            </ol>
+            <p>We reinforced this ordering with cudaDeviceSynchronize() barriers after each kernel launch. This is especially important between the neighbor contribution kernel and the finalization kernel. The contribution kernel performs numerous writes, often from many threads to the same memory locations, while the finalization kernel immediately reads those results to apply teleportation and compute iteration error. Without the synchronization barrier, the finalization kernel might begin execution while some SMs are still updating new_rank, causing inconsistent reads and corrupting the rank vector.
+            </p>
+            <p>We used atomic operations to complement this coarse-grained synchronization by enforcing correctness at a finer granularity. During the neighbor‐contribution phase, multiple threads may attempt to update the same node’s PageRank value simultaneously, particularly for high in-degree nodes common in real-world graphs. This made concurrent writes unavoidable. Using atomicAdd ensured that these updates occur in a thread-safe manner: although they serialize only the specific memory location being updated, they still allow the rest of the GPU to execute in parallel without interference. The combination of atomic operations within each kernel and global synchronization between kernels gives us a two-layer safety mechanism. Atomic operations prevent local write conflicts within a kernel, and cudaDeviceSynchronize() guarantees global correctness across kernel boundaries. This structured separation ensures convergence to the correct PageRank vector while still taking advantage of massive GPU parallelism.
+            </p>
+        </section>
+
+        <section>
+            <h3>Results</h3>
+            <h4>1. Testing Inputs
+            </h4>
+            <p>We used the Stanford Large Network Dataset Collection to find graphs that we could test our implementation on. While the collection includes  four open-source web graph datasets that we wanted to use, each of these datasets contains over 250,000 nodes and over 1,000,000 edges, and our GHC machines did not have enough disk space to store such large files. Thus, we opted to test our implementation on directed peer-to-peer network graphs instead. These graphs fit within our storage constraints, and also exhibit structural properties (such as naturally occurring dangling nodes and non-uniform out-degree distributions that make them a suitable candidate for evaluating PageRank. 
+            </p>
+            <p>Within the available graph data, we chose to use the graph data from: August 4 2002 (10876 nodes and 39994 edges), August 8 2002 (6301 nodes and 20777 edges), August 30 2002 (36682 nodes and 88328 edges), and August 31 2002 (62586 nodes and 147892 edges). These four graphs were of varying sizes, and allowed us to observe how our implementation scaled with different problem sizes. As expected, the larger graphs took longer to run with our baseline sequential implementation. 
+            </p>
+            <p>We also tested our implementations separately for OpenMP and CUDA, in order to separately analyze speedup across both frameworks (since they operate on fundamentally different hardware), as well as differences in performance between CPU and GPU.
+            </p>
+
+            <h4>2. OpenMP</h4>
+            <h5>2.1. GHC
+            </h5>
+            <p>We used 1, 2, 4, and 8 threads for testing on the GHC machines, and chose to measure our algorithm's performance using its speedup. We observed the following speedup graph:
+            </p>
+            <p>Here, we can see that there is a sublinear increase in speedup as the number of threads increases, which makes sense, since more threads mean that more processors can concurrently execute different parts of the workload. However, speedup itself is not perfectly linear, due to factors such as synchronization overhead in the form of barriers (e.g. we must compute dangling node contributions before computing incoming neighbor contributions), and potential memory bandwidth issues from irregular memory accesses for incoming nodes, though we fixed this issue by introducing an adjacency list for incoming nodes. 
+            </p>
+            <p>We also noticed that larger graphs had steeper speedup curves, which indicates that they benefited more from parallelism when compared to smaller graphs. This is likely because larger graphs have a larger computational workload, so the benefits of dividing computational workload amongst different threads outweigh the parallelism costs of communication overhead. 
+            </p>
+            <h5>2.2. PSC</h5>
+            <p>	We also used 1, 2, 4, 8, 16, 32, 64, and 128 threads on the PSC machines to test our implementation. We observed the following speedup graph: 
+            </p>
+            <p>We can see similar curve patterns to the GHC machines up to 8 threads, though the curves seen above are less steep than their GHC counterparts - this might be because our code consistently ran slower on the PSC machines, as compared to the GHC machines. Additionally, and very interestingly, we can see a critical point for all 4 graphs at 64 threads; however, all graphs except the largest graph showed a drop-off in performance for 128 threads, while the largest graph showed an increase in performance with 128 threads. This indicates that 128 threads is really only suitable for larger graphs, since it allows for the best scaling of computational workload without the dominance of parallel communication overhead/memory bandwidth overhead. Additionally, we observed that the larger graphs benefited significantly more from parallelism compared to the smaller graphs, which is consistent with the results that we saw on GHC. In fact, this pattern is much more apparent on PSC compared to GHC, since the two large graphs had similar performance curves on GHC, but very different performance curves on PSC, especially as the number of threads crossed 32.  
+            </p>
+            <p>	We also collected cache miss measurements for each of the four test graphs on the PSC machines. They are as follows: 
+            </p>
+            <p>	These results are more or less consistent with the patterns observed in our speedup graph. We can see that there is less cache contention as the number of threads increases, since the threads work on non-overlapping chunks of data, which leads to better overall cache locality. However, for the smaller graphs, the number of cache misses increases after 8 threads - this is likely due to the domination of false sharing, which might be why speedup increases more slowly after 8 threads, and then decreases from 64 to 128 threads. For the second-largest graph with 36682 nodes, false sharing begins to dominate at 128 threads, which might explain the drop-off in performance from 64 to 128 threads. However, for the largest graph, the number of cache misses steadily decreases, which indicates that it benefits significantly more from parallelism than the other graphs - this is also consistent with our speedup graph.
+            </p>
+            <h4>3. CUDA</h4>
+            <p>We chose to test our CUDA implementation on just the Gates GPUs, rather than using both the Gates and PSC machines. We first tested our implementation on block sizes of 128, 256, and 512: 
+            </p>
+            <p>With these measurements, we ended up selecting  a block size of 256 because it proved to be the most optimal. It consistently outperformed 128-thread blocks (which struggled to hide memory latency) and avoided the resource contention issues seen with 512-thread blocks on mid-sized graphs. While all configurations eventually converged at the largest dataset size, the 256-thread configuration offered the most stable and robust speedup curve across all test cases. We recorded the following results with a block size of 256: 
+            </p>
+            <p>We can see that CUDA demonstrates a significant advantage over the sequential implementation. The speedup factor follows a clear upward trend, starting at roughly 5.672x for measurements from August 8, 2002 (smallest) and peaking at over 14x for measurements from August 31, 2002 (largest). This may be because larger networks expose more parallelism so it is understandable that as more parallelism is exposed, the speedup would increase. This also  indicates that the algorithm is highly parallelizable and that the overhead of GPU data transfer is increasingly justified as the computational load grows. This makes the CUDA implementation far more scalable for large network analysis. 
+            </p>
+        </section>
+        <section>
+            <h3>References</h3>
+            <ul>
+                <li><a href="https://www.openmp.org/specifications/ 
+                ">https://www.openmp.org/specifications/ 
+                </a></li>
+                <li><a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/ 
+                    ">https://docs.nvidia.com/cuda/cuda-c-programming-guide/ 
+                </a></li>
+                <li><a href="http://snap.stanford.edu/data  
+                    ">http://snap.stanford.edu/data 
+                </a></li>
+                <li><a href="https://ieeexplore.ieee.org/document/7761620 
+                    ">https://ieeexplore.ieee.org/document/7761620 
+                </a></li>
+                <li><a href="https://www.ijcsit.com/docs/Volume%206/vol6issue03/ijcsit2015060306.pdf 
+                    ">https://www.ijcsit.com/docs/Volume%206/vol6issue03/ijcsit2015060306.pdf  
+                </a></li>
+                <li><a href="https://www.researchgate.net/publication/383709990_Performance_Analysis_of_Parallelized_PageRank_Algorithm_using_OpenMP_MPI_and_CUDA  
+                    ">https://www.researchgate.net/publication/383709990_Performance_Analysis_of_Parallelized_PageRank_Algorithm_using_OpenMP_MPI_and_CUDA   
+                </a></li>
+            </ul>
+        </section>
+    </div>
+
+    <div id="milestone" class="tab-content">
         <section>            
             <h3>Initial Schedule</h3>
             <table>
@@ -174,7 +339,8 @@
                     </tr>
                 </tbody>
             </table>
-
+        </section>
+        <section>
             <h3>Revised Plan</h3>
             <table>
                 <thead>
@@ -240,13 +406,17 @@
                     </tr>
                 </tbody>
             </table>
+        </section>
+
+        <section>
 
             <h3>Work Completed</h3>
             <p>Thus far, we have completed both our sequential and OpenMP implementations, and verified their correctness by testing on several simple graphs (ranging from 3-10 nodes). We also finished our testing suite (primarily consisting of our validation script) that more extensive test cases can plug into to benchmark our sequential and parallel implementations. Lastly, we started and are currently working on our CUDA implementation, as well as generating graphs with a couple thousand vertices to use for benchmarking.</p>
-
+        </section>
+        
+        <section>
             <h3>Goals and Deliverables</h3>
             <p>Based on the feedback we received on our proposal, we decided to focus more on analyzing parallelism bottlenecks due to the memory bound nature of our problems, as well as optimizing parallel operations to be more efficient based on this constraint. Therefore, we decided to scrap our MPI implementation, and instead focus on parallelism with just OpenMP and CUDA.</p>
-            
             <p>Additionally, due to unexpected travel conflicts, we are slightly behind on finishing our CUDA implementation and evaluation; however, our original plan did account for this, and included this week as a buffer week, so we will finish our intended goals with the revised plans. Therefore, we believe we can achieve our goals of a sequential baseline implementation, 2 parallel implementations (using OpenMP and CUDA), and performance evaluation/speedup analysis. However, we likely will not have time to implement our nice-to-have goals of hybrid parallelism and Gauss-Seidel PageRank. The updated list of goals is as follows:</p>
             
             <ul>
@@ -254,7 +424,9 @@
                 <li><strong>Parallel Implementations with OpenMP and CUDA:</strong> We will perform power-iteration PageRank until convergence using a CSR/adjacency-list graph representation for each implementation.</li>
                 <li><strong>Performance Evaluation and Speedup Analysis:</strong> We will measure the strength of scaling as we increase the number of processors (OpenMP), as well as GPU throughput and utilization (CUDA).</li>
             </ul>
-
+        </section>
+        
+        <section>
             <h3>Issues</h3>
             <p>No major issues - we just need to finish our implementations and get to benchmarking!</p>
         </section>
@@ -264,13 +436,17 @@
         <section>  
             <h3>Summary</h3>
             <p>We plan to implement and optimize a parallelized version of the PageRank algorithm using three complementary parallel programming models: OpenMP, MPI, and CUDA, to measure the importance of different nodes in a network. Our goal is to design and benchmark our parallel implementation and compare it against the sequential implementation and potentially other parallel implementations if time persists. </p>
+        </section>
 
+        <section>
             <h3>Background</h3>
             <p>We are interested in parallelizing the PageRank algorithm, which was developed by Google founders for web search ranking based on a numerical importance metric. PageRank works by treating the web as a graph, where webpages are nodes and hyperlinks are edges – a particular webpage receives a high importance score if many pages link to it, or if it is linked by highly ranked pages, thus factoring in both quantity and quality of links. The pseudocode for the algorithm is as follows: </p>
             <img src="10649542-fig-2-source-large.gif" alt="PageRank Pseudocode" height=500>
             <p>While primarily used for webpage ranking, the PageRank algorithm can also be used for other similar purposes, such as recommendation systems and ranking papers in journals.</p>
             <p>There are several key components of PageRank that allow it to benefit from parallelism. Within each iteration, the core operation is evaluating the rank update for each node by aggregating contributions from incoming neighbors – in a sequential implementation, this would be done one node at a time, but a parallel implementation can compute different nodes' updates in parallel, which would improve performance. Additionally, both sparse vector-matrix multiplication (used for traversing adjacency lists) and the iterative power method are highly parallelizable algorithms, so we hope to exploit parallelism here as well.</p>
+        </section>
 
+        <section>
             <h3>Challenge</h3>
             <p>While PageRank lends itself naturally to parallelism, this project is challenging due to performance challenges that will arise from the structure of large real-world graphs and the memory-bound nature of the algorithm. The algorithm requires scanning numerous edges and each iteration has little computation per edge, but requires significant memory movement. This makes overall performance sensitive to memory bandwidth, memory access patterns, and communication overhead in distributed settings. We hope to learn how different parallel paradigms handle irregular, sparse, memory-bound workloads, what bottlenecks will dominate in each model, how graph structure affects load balancing and scaling, and how effectively parallelism can accelerate PageRank given its constraints. </p>
             <p>PageRank uses an iterative power method, so within each iteration, updates to nodes are independent as long as the previous iteration's vector is read-only. Because of this, we plan to parallelize node computations, as well as the iterative power method/sparse matrix-vector multiplication, using the different programming models.
@@ -280,12 +456,16 @@
             <p>
                 PageRank is primarily memory-bound rather than compute-bound so some constraints would be related to how much memory is required to store large graphs, particularly when dealing with dense matrices. Additionally, cache locality would become a significant constraint as PageRank's random access patterns and large vector sizes mean that vector value accesses may exceed cache capacity often, leading to costly memory transfers. Thus, performance is restricted by memory bandwidth, cache efficiency, and whether we can fit the critical working set in fast-access memory. 
             </p>
+        </section>
 
+        <section>
             <h3>Resources</h3>
             <p>
                 We will be using multi-core CPU nodes and MPI capable clusters on the PSC Bridges-2 machines if provided which will allow us to run both OpenMP and MPI experiments at varying thread and processor counts. Additionally, to implement parallelism using CUDA, we will also need to use GPU nodes so we can evaluate the performance of PageRank under parallel execution. However, similar to the previous assignments, we will use the GHC machines for debugging purposes and reserve PSC use only for evaluation. We will be starting from the sequential PageRank code and then trying to parallelize that. The paper we will use as reference to how to do this is: "Performance Analysis of Parallelized PageRank Algorithm using OpenMP, MPI and CUDA" where we are given a starting point on how to implement the PageRank Algorithm in a parallel fashion. For now we think these resources would be sufficient and would benefit from access to the PSC machines. 
             </p>
+        </section>
 
+        <section>
             <h3>Goals / Deliverables</h3>
             <h4>Plan to Achieve</h4>
             <ul>
@@ -307,11 +487,17 @@
                 <li>We might also implement the asynchronous Gauss-Seidel PageRank algorithm and see if we can get better results with MPI, OpenMP, and CUDA implementations. We hypothesize that if we are able to do this we would get better speedup and memory utilization results as this algorithm would remove global iteration barriers. 
                 </li>
             </ul>
+        </section>
+
+        <section>
 
             <h3>Platform Choice</h3>
             <p>
                 To parallelize our algorithm, we plan to use OpenMP, MPI, and CUDA. OpenMP is well suited for PageRank, since each iteration of the PageRank algorithm contains loops over nodes in the graph that can be parallelized, which would allow us to effectively use multicore CPUs. CUDA is also a good fit, since it's naturally suited to handle the parallelization of sparse matrix-vector multiplication and iterative powers, which comprise the bulk of PageRank's computation. Lastly, we chose to explore MPI due to the memory-bound nature of PageRank - MPI allows us to partition the graph across multiple nodes, which in theory would benefit the scalability of PageRank, so we wanted to explore this as well.
             </p>
+        </section>
+
+        <section>
 
             <h3>Schedule</h3>
             <table>
@@ -364,6 +550,9 @@
                     </tr>
                 </tbody>
             </table>
+        </section>
+
+        <section>
 
             <h3>References</h3>
             <ul>
